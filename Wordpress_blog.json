@@ -1,0 +1,356 @@
+{
+  "name": "Wordpress blog",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "29ae0e82-9125-466e-8d59-c145d80416fb",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://newsdata.io/api/1/news",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "pub_81703ca6f0eace281711226b826e82dbce252"
+            },
+            {
+              "name": "category",
+              "value": "technology"
+            },
+            {
+              "name": "language",
+              "value": "en"
+            },
+            {
+              "name": "country",
+              "value": "us"
+            },
+            {
+              "name": "size",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "7ca052ed-1747-4f37-af57-5dd428c1dc80",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an expert blog writer who creates engaging, original content. You excel at transforming news into interesting articles without plagiarism.",
+              "role": "system"
+            },
+            {
+              "content": "=Write a completely original blog post about this news:\nTitle: {{ $json.results[0].title }}\nDescription:{{ $json.results[0].description }}\n\nRequirements:\n- Create a unique and engaging title\n- Write EXACTLY 5 separate paragraphs (each in its own <p> tag)\n- Include your own analysis and perspective\n- Do NOT copy phrases from the original source\n- End with a thoughtful conclusion\n\nFormat the response as clean JSON without backticks:\n{\n  \"title\": \"Your creative blog title\",\n  \"content\": \"The full blog post content with HTML formatting including separate <p> tags for each paragraph\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        440,
+        0
+      ],
+      "id": "d07e6e51-931c-4eed-a9e0-1804113f66a3",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "C6ueSke246Slwxww",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = items[0].json.message.content;\nconst parsed = JSON.parse(response);\nreturn [\n  {\n    json: {\n      title: parsed.title,\n      content: parsed.content\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ],
+      "id": "cf6d4c1c-8f00-48e7-9fe9-8cbff2614c79",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "prompt": "={{ \"create a professinal illustration showing\" +$json.title +\". the image should reflect key themes from this content: \"+$json.content.substring(0,200) }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1020,
+        0
+      ],
+      "id": "48d86f1d-865e-4072-b204-da8eb636db21",
+      "name": "OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "C6ueSke246Slwxww",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "resize",
+        "width": 1340,
+        "height": 638,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        0
+      ],
+      "id": "68567346-633d-4c6b-8418-7df615c1a49d",
+      "name": "Edit Image",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nocodehack.io/wp-json/wp/v2/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Disposition",
+              "value": "attachment; filename=image.png"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        0
+      ],
+      "id": "ef8c361c-cdaa-44cd-8bcf-8238ac061144",
+      "name": "HTTP Request1",
+      "executeOnce": false,
+      "alwaysOutputData": false,
+      "credentials": {
+        "wordpressApi": {
+          "id": "RfAI5ePLGTnbVkSf",
+          "name": "Wordpress account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        1280,
+        340
+      ],
+      "id": "2d7e0cb3-a4e3-4412-b307-331b45776435",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nocodehack.io/wp-json/wp/v2/posts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{ $('Code').item.json.title }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('Code').item.json.content }}"
+            },
+            {
+              "name": "status",
+              "value": "publish"
+            },
+            {
+              "name": "featured_media",
+              "value": "={{ $('HTTP Request1').item.json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        340
+      ],
+      "id": "b68ddbe7-f69d-421d-b0fb-ffea09b1c49e",
+      "name": "HTTP Request2",
+      "credentials": {
+        "wordpressApi": {
+          "id": "RfAI5ePLGTnbVkSf",
+          "name": "Wordpress account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "OpenAI1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "OpenAI1": {
+      "main": [
+        [
+          {
+            "node": "Edit Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Image": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 300
+  },
+  "versionId": "c8ca1309-94ec-4ac8-a14b-ca75a6a2d7c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cd8ff33dde04e389346982f06c7f2feed2561d3ea2af8c05544f44d32c7108d4"
+  },
+  "id": "76qQvudMGGcvd5cf",
+  "tags": []
+}

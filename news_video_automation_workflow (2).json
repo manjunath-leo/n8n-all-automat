@@ -1,0 +1,166 @@
+{
+  "name": "TokenMetrics-news-video-automation",
+  "nodes": [
+    {
+      "id": "1",
+      "type": "n8n-nodes-base.cron",
+      "name": "Cron Trigger",
+      "parameters": {
+        "triggerTimes": { "item": [{ "cronExpression": "0 9 * * *" }] }
+      }
+    },
+    {
+      "id": "2",
+      "type": "n8n-nodes-base.httpRequest",
+      "name": "Fetch Latest Post ID",
+      "parameters": {
+        "url": "https://api.beehiiv.com/v2/publications",
+        "method": "GET",
+        "headers": { "Authorization": "Bearer {{$env.BEEHIIV_API_KEY}}" },
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "3",
+      "type": "n8n-nodes-base.httpRequest",
+      "name": "Fetch Latest Post Content",
+      "parameters": {
+        "url": "https://api.beehiiv.com/v2/publications/{{$json[\"data\"][0].id}}/posts?limit=1",
+        "method": "GET",
+        "headers": { "Authorization": "Bearer {{$env.BEEHIIV_API_KEY}}" },
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "4",
+      "type": "n8n-nodes-base.function",
+      "name": "Extract Post",
+      "parameters": {
+        "functionCode": "const p = $json.data[0];\nreturn [{json: {id: p.id, title: p.title, body: p.body_html.replace(/<[^>]+>/g, '')}}];"
+      }
+    },
+    {
+      "id": "5",
+      "type": "n8n-nodes-base.httpRequest",
+      "name": "Script via Hailuo",
+      "parameters": {
+        "url": "https://pollo.ai/api/platform/generation/text-01",
+        "method": "POST",
+        "headers": {
+          "x-api-key": "{{$env.HAILUO_API_KEY}}",
+          "Content-Type": "application/json"
+        },
+        "body": "={{ { \"prompt\": `Write a 90‑second news-style script summarizing: ${$json.body}`, \"max_tokens\": 300 } }}",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "6",
+      "type": "n8n-nodes-base.httpRequest",
+      "name": "TTS via Replicate (Bark)",
+      "parameters": {
+        "url": "https://api.replicate.com/v1/predictions",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Token {{$env.REPLICATE_API_TOKEN}}",
+          "Content-Type": "application/json"
+        },
+        "body": "={{ { \"version\": \"7d8ba50db80ed72b11afc3ec0c98209b46d8cc57a3149d88ce0ddcb038a88a0d3\", \"input\": { \"text\": $json.text, \"voice\": \"en_us_001\" } } }}",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "7",
+      "type": "n8n-nodes-base.function",
+      "name": "Prepare Midjourney Prompt",
+      "parameters": {
+        "functionCode": "const s = $json[\"text\"];\nconst snippet = s.split(\". \")[0];\nreturn [{json:{prompt:`Illustrate news: ${snippet}`, script: s}}];"
+      }
+    },
+    {
+      "id": "8",
+      "type": "n8n-nodes-base.httpRequest",
+      "name": "Trigger Midjourney",
+      "parameters": {
+        "url": "{{$env.DISCORD_WEBHOOK_URL}}",
+        "method": "POST",
+        "body": { "content": "/imagine {{$json.prompt}}" },
+        "options": { "rawBody": true }
+      }
+    },
+    {
+      "id": "9",
+      "type": "n8n-nodes-base.wait",
+      "name": "Wait for Images",
+      "parameters": { "waitTime": 600 }
+    },
+    {
+      "id": "10",
+      "type": "n8n-nodes-base.httpRequest",
+      "name": "Collect Image URLs",
+      "parameters": {
+        "url": "https://api.imagineapi.dev/v1/fetch?prompt={{$json.prompt}}&apiKey={{$env.IMAGINE_API_KEY}}",
+        "method": "GET",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "11",
+      "type": "n8n-nodes-base.httpRequest",
+      "name": "Animate via Replicate",
+      "parameters": {
+        "url": "https://api.replicate.com/v1/predictions",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Token {{$env.REPLICATE_API_TOKEN}}",
+          "Content-Type": "application/json"
+        },
+        "body": "={{ { version: \"sdrm/stable-diffusion-ebsdf-animation:latest\", input: { image_url: $json.results[0], prompt: `${$json.prompt} animation` } } }}",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "12",
+      "type": "n8n-nodes-base.httpRequest",
+      "name": "Merge A/V via Replicate",
+      "parameters": {
+        "url": "https://api.replicate.com/v1/predictions",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Token {{$env.REPLICATE_API_TOKEN}}",
+          "Content-Type": "application/json"
+        },
+        "body": "={{ { version: \"cjwbw/video-editing-model:abc123\", input: { video_url: $node[\"11\"].json.output, audio_url: $node[\"6\"].json.output } } }}",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "13",
+      "type": "n8n-nodes-base.youTube",
+      "name": "Upload to YouTube",
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "fileUrl": "={{$node[\"12\"].json.output}}",
+        "title": "={{`News: ${$node[\"4\"].json.title}`}}",
+        "description": "Auto-generated news from Token Metrics research.",
+        "tags": ["finance","crypto","news"],
+        "publishAt": ""
+      }
+    }
+  ],
+  "connections": {
+    "1": { "main": [[{"node":"2","type":"main","index":0}]] },
+    "2": { "main": [[{"node":"3","type":"main","index":0}]] },
+    "3": { "main": [[{"node":"4","type":"main","index":0}]] },
+    "4": { "main": [[{"node":"5","type":"main","index":0}]] },
+    "5": { "main": [[{"node":"6","type":"main","index":0}]] },
+    "6": { "main": [[{"node":"7","type":"main","index":0}]] },
+    "7": { "main": [[{"node":"8","type":"main","index":0}]] },
+    "8": { "main": [[{"node":"9","type":"main","index":0}]] },
+    "9": { "main": [[{"node":"10","type":"main","index":0}]] },
+    "10": { "main": [[{"node":"11","type":"main","index":0}]] },
+    "11": { "main": [[{"node":"12","type":"main","index":0}]] },
+    "12": { "main": [[{"node":"13","type":"main","index":0}]] }
+  }
+}

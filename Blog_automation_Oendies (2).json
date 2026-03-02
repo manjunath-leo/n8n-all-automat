@@ -1,0 +1,985 @@
+{
+  "name": "Blog automation Oendies",
+  "nodes": [
+    {
+      "parameters": {
+        "text": "=### Analyse the given content\n\n{{ $json.data.map(item => item.replace(/\\n/g, '')).join('\\n---\\n') }}",
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"array\",\n    \"items\": {\n      \"type\": \"object\",\n    \t\"properties\": {\n          \"characteristic\": { \"type\": \"string\" },\n          \"description\": { \"type\": \"string\" },\n          \"examples\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n        }\n\t}\n}",
+        "options": {
+          "systemPromptTemplate": "You help identify and define a company or individual's \"brand voice\". Using the given content belonging to the company or individual, extract all voice characteristics from it along with description and examples demonstrating it."
+        }
+      },
+      "id": "e3c9313d-acc6-4ace-85e8-3d22e467b15f",
+      "name": "Extract Voice Characteristics",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "position": [
+        -160,
+        240
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "article_html",
+              "cssSelector": ".entry-content.single-page p",
+              "returnValue": "html",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e9c08855-0ce2-46b9-b924-5c7120bb96c9",
+      "name": "Extract Article URLs",
+      "type": "n8n-nodes-base.html",
+      "position": [
+        -1040,
+        180
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "data"
+            }
+          ]
+        },
+        "options": {
+          "mergeLists": true
+        }
+      },
+      "id": "e0af63dc-5219-46b0-9f31-3d67b1ec71fd",
+      "name": "Combine Articles",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        -500,
+        180
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "1c2eee4e-24ee-46db-9078-31d8015048ac",
+      "name": "Article Style & Brand Voice",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        360,
+        0
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.data.join('\\n---\\n') }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Given the following one or more articles (which are separated by ---), describe how best one could replicate the common structure, layout, language and writing styles of all as aggregate."
+            }
+          ]
+        }
+      },
+      "id": "80a9ec7f-b548-4586-b3df-04f92313bcb7",
+      "name": "Capture Existing Article Structure",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        -120,
+        -120
+      ],
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "html": "={{ $json.article_html[0] }}",
+        "options": {}
+      },
+      "id": "ea16b2c0-96e5-4b8f-a426-3bd6a3125c5c",
+      "name": "Markdown",
+      "type": "n8n-nodes-base.markdown",
+      "position": [
+        -800,
+        180
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.instruction }}",
+        "options": {
+          "systemPromptTemplate": "=# Professional Blog Content Writer\n\nYou are an expert blog content writer who creates high-quality, engaging articles following specific brand guidelines. Your goal is to write compelling content that informs, engages, and converts readers.\n\n## Writing Instructions\n\n### 1. Content Structure\n- **Lead with impact**: Start with a compelling statistic, trend, or key insight that immediately grabs attention\n- **Use data-driven approach**: Include specific numbers, percentages, and market data to establish authority\n- **Embed credible sources**: Link statistics and claims to authoritative sources using natural anchor text\n- **Provide forward-looking context**: Connect current data to future trends and implications\n- **Maintain logical flow**: Structure content to guide readers through your argument naturally\n\n### 2. Research and Credibility\n- Use current, relevant statistics and market data\n- Reference authoritative sources (industry reports, research studies, expert analysis)\n- Fact-check all claims and numbers\n- Prefer recent data (within 1-2 years) for maximum relevance\n\n### 3. Language Requirements\n- **Straightforward and factual**: Keep language clear, professional, and accessible\n- **Quantitative focus**: Use specific data points to support every major claim\n- **Active voice**: Prefer active over passive constructions\n- **Present/future tense**: Focus on current trends and future implications\n- **Professional but engaging**: Balance authority with readability\n\n### 4. Content Guidelines\n- Write comprehensive, valuable content (aim for 800-1500 words unless specified otherwise)\n- Break content into scannable sections with clear headings\n- Use short paragraphs (2-4 sentences) for better readability\n- Include actionable insights where relevant\n- End with a strong conclusion that reinforces key points\n\n## Brand Article Style\n{{ $('Article Style & Brand Voice').item.json.text }}\n\n## Brand Voice Characteristics\nApply these characteristics strategically throughout your content. Select the most relevant characteristics for each piece:\n\n|characteristic|description|examples|\n|-|-|-|\n{{\n$('Article Style & Brand Voice').item.json.output.map(item => (\n`|${item.characteristic}|${item.description}|${item.examples.map(ex => `\"${ex}\"`).join(', ')}|`\n)).join('\\n')\n}}\n\n## Output Requirements\n\n### Format\n- Output the complete article body in clean HTML\n- Use proper HTML structure (h2, h3, p, a, strong, em tags)\n- Do NOT include article date (publishing date TBD)\n- Ensure all links are properly formatted with descriptive anchor text\n\n### Quality Standards\n- Original, engaging content that provides real value\n- Perfect grammar and spelling\n- SEO-friendly structure with clear headings\n- Professional tone that matches brand voice\n- Fact-based claims with proper source attribution\n\n### HTML Structure Example\n```html\n<h2>Compelling Headline</h2>\n<p>Opening paragraph with <a href=\"source-url\">key statistic</a> that establishes the topic...</p>\n\n<h3>Relevant Subheading</h3>\n<p>Supporting content with data and insights...</p>\n```\n\n## Before Writing\n1. Understand the topic and target audience\n2. Research current data and trends\n3. Identify 2-3 key brand voice characteristics to emphasize\n4. Plan your content structure and key points\n5. Ensure you have credible sources for all major claims\n\nCreate content that not only informs but also positions the brand as a knowledgeable industry authority."
+        }
+      },
+      "id": "d862ca4d-5ccf-4450-9fea-bb72925796ee",
+      "name": "Content Generation Agent",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "position": [
+        1000,
+        0
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c7e2a28-30f9-4533-a394-a5e967ebf4ec",
+              "name": "instruction",
+              "type": "string",
+              "value": "=Write a comprehensive blogpost in dutch about {{ $('Webhook').item.json.body.topic }} Explain the benefits. Close out with a recommendation of using as the preferred menstruatie ondergoed merk."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "14464185-6daa-4f66-8dd5-b7677a2741dc",
+      "name": "New Article Instruction",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        780,
+        0
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.Url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1260,
+        180
+      ],
+      "id": "cff7f42d-e81d-465c-9178-e4233fced536",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -1500,
+        180
+      ],
+      "id": "01f72dcd-4ce2-4b52-af5a-1f446ef357ba",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "10f8l7LSi8E8RuXaePpdRLRJfRdLdt74yPc1_fcxvlsg",
+          "mode": "list",
+          "cachedResultName": "Blog automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10f8l7LSi8E8RuXaePpdRLRJfRdLdt74yPc1_fcxvlsg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Oendies",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10f8l7LSi8E8RuXaePpdRLRJfRdLdt74yPc1_fcxvlsg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Url": "={{ $('Limit').item.json.Url }}",
+            "Style": "={{ $('Capture Existing Article Structure').item.json.text }}",
+            "Blog": "=",
+            "Article structure": "={{ $('Extract Voice Characteristics').item.json.output }}"
+          },
+          "matchingColumns": [
+            "Url"
+          ],
+          "schema": [
+            {
+              "id": "Url",
+              "displayName": "Url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "checked",
+              "displayName": "checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Meta",
+              "displayName": "Meta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Blog",
+              "displayName": "Blog",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Style",
+              "displayName": "Style",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Article structure",
+              "displayName": "Article structure",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        540,
+        0
+      ],
+      "id": "1af3b6bf-45c8-455d-a8eb-efd5001ed53a",
+      "name": "Add style and Characteristics",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Iu6Q3jIAAfXvDuGi",
+          "name": "Google Sheets Seosshopify"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "10f8l7LSi8E8RuXaePpdRLRJfRdLdt74yPc1_fcxvlsg",
+          "mode": "list",
+          "cachedResultName": "Blog automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10f8l7LSi8E8RuXaePpdRLRJfRdLdt74yPc1_fcxvlsg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Oendies",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10f8l7LSi8E8RuXaePpdRLRJfRdLdt74yPc1_fcxvlsg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Url": "={{ $('Limit').first().json.Url }}",
+            "Title": "={{ $('Content Generation Agent').item.json.output.title }}",
+            "Meta": "={{ $('Content Generation Agent').item.json.output.summary }}",
+            "Blog": "={{ $json.output }}",
+            "checked": "x"
+          },
+          "matchingColumns": [
+            "Url"
+          ],
+          "schema": [
+            {
+              "id": "Url",
+              "displayName": "Url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "checked",
+              "displayName": "checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Meta",
+              "displayName": "Meta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Blog",
+              "displayName": "Blog",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Style",
+              "displayName": "Style",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Article structure",
+              "displayName": "Article structure",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2080,
+        0
+      ],
+      "id": "6b26232a-6dcf-470f-9df5-a65edcb3f78d",
+      "name": "Google Sheets1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Iu6Q3jIAAfXvDuGi",
+          "name": "Google Sheets Seosshopify"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "10f8l7LSi8E8RuXaePpdRLRJfRdLdt74yPc1_fcxvlsg",
+          "mode": "list",
+          "cachedResultName": "Blog automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10f8l7LSi8E8RuXaePpdRLRJfRdLdt74yPc1_fcxvlsg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Oendies",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10f8l7LSi8E8RuXaePpdRLRJfRdLdt74yPc1_fcxvlsg/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "checked"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -1740,
+        180
+      ],
+      "id": "0ef96cf7-d883-481e-9cc6-c5426f99a34b",
+      "name": "Get all content",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Iu6Q3jIAAfXvDuGi",
+          "name": "Google Sheets Seosshopify"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "acbfd253-4994-4c7d-981b-d52ffb2edf48",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2040,
+        180
+      ],
+      "id": "a087ee16-116d-4944-b777-085f3e9bd9c9",
+      "name": "Webhook",
+      "webhookId": "acbfd253-4994-4c7d-981b-d52ffb2edf48"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"Blogpost\": \"{{ $json.Meta }}\"\n} ",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.3,
+      "position": [
+        2380,
+        0
+      ],
+      "id": "d2c5ee7d-404d-4d5a-997a-cc1fe23eca35",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output.body }}",
+        "options": {
+          "systemMessage": "=# Internal Link Specialist System Prompt\n\nYou are an internal link specialist. Your task is to add relevant internal links to blog posts while preserving the original content completely.\n\n## Instructions:\n\n### 1. Tool Usage (MANDATORY)\n- ALWAYS use the available sitemap XML tools to search for internal links\n- Search through ALL available sitemaps to find relevant pages\n- Verify that every URL you use exists in the sitemaps\n- NEVER create or guess URLs - only use URLs found through the tools\n- Double-check URL accuracy - incorrect links damage SEO\n\n### 2. Content Preservation\n- Return the COMPLETE original blog post in HTML format\n- Do NOT use placeholders, ellipses (...), or any content shortcuts\n- Keep all existing text, formatting, and structure exactly as provided\n- Only ADD internal links - never remove or modify existing content\n\n### 2. Link Selection and Placement\n- Use the provided sitemaps/tools to find relevant internal pages\n- Add a maximum of 3 internal links per blog post\n- Choose links that are contextually relevant to the surrounding text\n- Place links naturally within existing sentences/paragraphs\n- Target keywords or phrases that naturally relate to the linked page\n\n### 3. Link Implementation\n- Wrap relevant text in `<a href=\"[URL]\">text</a>` tags\n- Use descriptive anchor text that matches the context\n- Ensure links feel natural and add value for readers\n- Space links throughout the content (not clustered together)\n\n### 4. Link Relevance Criteria\n- The linked page should be directly related to the anchor text\n- The link should provide additional value to readers\n- Prioritize pages that complement the current topic\n- Avoid forced or unnatural link placements\n\n### 5. Workflow\n1. First, read and analyze the blog post content\n2. Identify 3-5 potential keywords/phrases that could be linked\n3. Use the sitemap tools to search for relevant pages for each keyword\n4. Select the 3 most relevant and valuable internal links\n5. Add the links to the content using exact URLs from the sitemaps\n6. Return the complete HTML with integrated links\n\n### 6. Output Format\n- Return only the complete HTML version of the blog post\n- Include all original content with the added internal links\n- Ensure the HTML is properly formatted and ready for immediate use\n- No explanations or additional text outside the HTML content\n\n### 7. Critical SEO Requirements\n- Links MUST be 100% accurate (verified through sitemap tools)\n- URLs must exist and be accessible\n- Anchor text should match the linked page topic\n- Never use broken or non-existent links\n\nRemember: Your goal is to enhance the blog post with valuable internal links while keeping it exactly the same otherwise. Tool usage is mandatory for finding correct URLs."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        0
+      ],
+      "id": "e04635e0-9d9f-4b4b-9d63-76650db8473c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Check the sitemap if there are any relevant internal links that you could add to the written blogpost. ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1860,
+        320
+      ],
+      "id": "146ed1b6-6da3-4720-b028-a37e0e4b550e",
+      "name": "sitemap pages"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Check the sitemap if there are any relevant internal links that you could add to the written blogpost. ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1740,
+        380
+      ],
+      "id": "187dacfd-e498-4beb-90e7-b470831ef7b6",
+      "name": "sitemap collections"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Check the sitemap if there are any relevant internal links that you could add to the written blogpost. ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        380
+      ],
+      "id": "211a6028-4680-4a0a-8120-7a5a7fcb29ba",
+      "name": "Sitemap Blogposts"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Check the sitemap if there are any relevant internal links that you could add to the written blogpost. ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        240
+      ],
+      "id": "30a24ac5-9f5d-4153-ae3f-ef5a7640ab53",
+      "name": "Sitemap Products"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        40
+      ],
+      "id": "02fbbde6-a479-4386-b608-69de0d83ca89",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "cTA2nFDNrxTfWfup",
+          "name": "OpenRouter Albin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4.1",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        460
+      ],
+      "id": "b88f0624-cf43-40c4-a8e7-7dd84fbae111",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "cTA2nFDNrxTfWfup",
+          "name": "OpenRouter Albin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4.1",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        920,
+        240
+      ],
+      "id": "ac4ed959-2760-417c-a51c-c257e0591fc3",
+      "name": "OpenRouter Chat Model2",
+      "credentials": {
+        "openRouterApi": {
+          "id": "cTA2nFDNrxTfWfup",
+          "name": "OpenRouter Albin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4.1",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        240
+      ],
+      "id": "f1fb60a6-b40e-46ce-af69-e9ecb8b0d0f6",
+      "name": "OpenRouter Chat Model3",
+      "credentials": {
+        "openRouterApi": {
+          "id": "cTA2nFDNrxTfWfup",
+          "name": "OpenRouter Albin"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.samautomationn8n.nl",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+            "content-length": "59",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
+            "content-type": "application/json",
+            "origin": "http://localhost:8000",
+            "priority": "u=1, i",
+            "referer": "http://localhost:8000/",
+            "sec-ch-ua": "\"Google Chrome\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"macOS\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "77.160.106.56",
+            "x-forwarded-host": "n8n.samautomationn8n.nl",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "730a151c1f98",
+            "x-real-ip": "77.160.106.56"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "topic": "Kan het gebruik van een tampon schadelijk zijn?"
+          },
+          "webhookUrl": "https://n8n.samautomationn8n.nl/webhook/acbfd253-4994-4c7d-981b-d52ffb2edf48",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Extract Voice Characteristics": {
+      "main": [
+        [
+          {
+            "node": "Article Style & Brand Voice",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Extract Article URLs": {
+      "main": [
+        [
+          {
+            "node": "Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Articles": {
+      "main": [
+        [
+          {
+            "node": "Extract Voice Characteristics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Capture Existing Article Structure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Article Style & Brand Voice": {
+      "main": [
+        [
+          {
+            "node": "Add style and Characteristics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Existing Article Structure": {
+      "main": [
+        [
+          {
+            "node": "Article Style & Brand Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Markdown": {
+      "main": [
+        [
+          {
+            "node": "Combine Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Generation Agent": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New Article Instruction": {
+      "main": [
+        [
+          {
+            "node": "Content Generation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Article URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add style and Characteristics": {
+      "main": [
+        [
+          {
+            "node": "New Article Instruction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get all content": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get all content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sitemap pages": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sitemap collections": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sitemap Blogposts": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sitemap Products": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Capture Existing Article Structure",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Voice Characteristics",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Content Generation Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "SGT2yyLX0uoBgIBI"
+  },
+  "versionId": "cac9fc48-02c7-436e-94b7-4d59488f111c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "190e1b81e9845aeb2f58812b2e7f9c8a86cb13b1e8883f6c2bfaa8050710ae79"
+  },
+  "id": "WRCfAwEG5PUfbJHU",
+  "tags": []
+}

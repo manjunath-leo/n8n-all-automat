@@ -1,0 +1,645 @@
+{
+  "name": "CRM AUTOMTION",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1080,
+        -120
+      ],
+      "id": "79f8d562-46fe-446e-a61e-707e3c862f4c",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "8tKd4PtmI2W8Taoj",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const { id, snippet } = item.json;\n  const fromHeader = item.json.From || item.json.from || '';\n  \n  // Parse \"Name <email@example.com>\"\n  let contactName = '';\n  let contactEmail = '';\n  const m = fromHeader.match(/^(.*)\\s*<(.+)>$/);\n  if (m) {\n    contactName  = m[1].trim();\n    contactEmail = m[2].trim();\n  } else {\n    contactName = fromHeader;\n  }\n\n  return {\n    json: {\n      platform:     'email',\n      contactName,\n      contactEmail,\n      messageText:  snippet,\n      messageUrl:   `https://mail.google.com/mail/u/0/#search/rfc822msgid:${id}`\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        -120
+      ],
+      "id": "4533468b-54e8-424b-a2dc-8400d849e65a",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "resource": "person",
+        "name": "={{ $json.contactName }}",
+        "additionalFields": {
+          "email": [
+            "={{ $json.contactEmail }}"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.pipedrive",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -120
+      ],
+      "id": "86824757-dc7d-4246-a7bb-8b883a3f7514",
+      "name": "Pipedrive to create contact",
+      "credentials": {
+        "pipedriveApi": {
+          "id": "wmqL06m0IfgQw8EM",
+          "name": "Pipedrive account manjunath"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "title": "={{ $json.name }}",
+        "associateWith": "person",
+        "person_id": "={{ $json.id }}",
+        "additionalFields": {
+          "stage_id": 18
+        }
+      },
+      "type": "n8n-nodes-base.pipedrive",
+      "typeVersion": 1,
+      "position": [
+        760,
+        -120
+      ],
+      "id": "9823786c-2d31-47c3-9364-751ff43a6729",
+      "name": "Pipedrive to create a deal",
+      "credentials": {
+        "pipedriveApi": {
+          "id": "wmqL06m0IfgQw8EM",
+          "name": "Pipedrive account manjunath"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-nano"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "d364dfe1-b6a8-4f36-9158-93653cbe3a64",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -840,
+        100
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "sETMSl9VJGHHTOUA",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "3fa478cd-9476-4a10-b039-1e537b838b31",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "true"
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "ea004fb2-bd0a-46b9-8a72-683daf9d7801",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -400,
+        -100
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Email Body:{{ $json.snippet }}\n\n",
+        "options": {
+          "systemMessage": "=You are a lead-qualification assistant for TokenMetrics, a crypto analytics platform. Your task is to read the body of an incoming email and decide whether the sender is expressing genuine interest in our product or services (pricing, trial access, feature questions, partnerships, or custom analytics). Respond with exactly true if it’s a potential sales lead, or false otherwise. No other output."
+        }
+      },
+      "id": "1f8b4e70-f10a-43a1-b96b-aeb3275c4742",
+      "name": "Validator of Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -820,
+        -120
+      ],
+      "typeVersion": 1.9
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_3786263695484553158"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -180,
+        -120
+      ],
+      "id": "2bf44394-1d98-4fff-8ef8-4b10a6636080",
+      "name": "Gmail calssifier adds label to leads",
+      "webhookId": "3408c945-2d8e-48eb-8715-88dcd8fb9919",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "8tKd4PtmI2W8Taoj",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        60,
+        -120
+      ],
+      "id": "9e9082f4-0268-4820-8ebd-ef45d1d49770",
+      "name": "Gmail message input",
+      "webhookId": "883723e6-20d0-4798-94f5-fc00b14bc554",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "8tKd4PtmI2W8Taoj",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19829072bf8d5e57",
+          "threadId": "19829072bf8d5e57",
+          "snippet": "hey i wanted to know about the various api plans available by tokenmetrics CONFIDENTIALITY STATEMENT: Privileged/Confidential Information may be contained in this message. If you are not the addressee",
+          "payload": {
+            "mimeType": "multipart/alternative"
+          },
+          "sizeEstimate": 7524,
+          "historyId": "1486847",
+          "internalDate": "1753034980000",
+          "labels": [
+            {
+              "id": "INBOX",
+              "name": "INBOX"
+            },
+            {
+              "id": "IMPORTANT",
+              "name": "IMPORTANT"
+            },
+            {
+              "id": "CATEGORY_PERSONAL",
+              "name": "CATEGORY_PERSONAL"
+            },
+            {
+              "id": "UNREAD",
+              "name": "UNREAD"
+            }
+          ],
+          "From": "Manjunath S <manjunath@tokenmetrics.com>",
+          "Subject": "asking about price of api plans (test message)",
+          "To": "Token Metrics Marketing <marketing@tokenmetrics.com>"
+        }
+      }
+    ],
+    "Gmail message input": [
+      {
+        "json": {
+          "id": "19829072bf8d5e57",
+          "threadId": "19829072bf8d5e57",
+          "snippet": "hey i wanted to know about the various api plans available by tokenmetrics CONFIDENTIALITY STATEMENT: Privileged/Confidential Information may be contained in this message. If you are not the addressee",
+          "payload": {
+            "mimeType": "multipart/alternative"
+          },
+          "sizeEstimate": 7524,
+          "historyId": "1486932",
+          "internalDate": "1753034980000",
+          "labels": [
+            {
+              "id": "INBOX",
+              "name": "INBOX"
+            },
+            {
+              "id": "IMPORTANT",
+              "name": "IMPORTANT"
+            },
+            {
+              "id": "CATEGORY_PERSONAL",
+              "name": "CATEGORY_PERSONAL"
+            },
+            {
+              "id": "UNREAD",
+              "name": "UNREAD"
+            },
+            {
+              "id": "Label_3786263695484553158",
+              "name": "leads"
+            }
+          ],
+          "From": "Manjunath S <manjunath@tokenmetrics.com>",
+          "Subject": "asking about price of api plans (test message)",
+          "To": "Token Metrics Marketing <marketing@tokenmetrics.com>"
+        }
+      }
+    ],
+    "Validator of Email": [
+      {
+        "json": {
+          "output": "true"
+        }
+      }
+    ],
+    "Gmail calssifier adds label to leads": [
+      {
+        "json": {
+          "id": "19829072bf8d5e57",
+          "threadId": "19829072bf8d5e57",
+          "labelIds": [
+            "Label_3786263695484553158",
+            "UNREAD",
+            "IMPORTANT",
+            "CATEGORY_PERSONAL",
+            "INBOX"
+          ]
+        }
+      }
+    ],
+    "Code": [
+      {
+        "json": {
+          "platform": "email",
+          "contactName": "Manjunath S",
+          "contactEmail": "manjunath@tokenmetrics.com",
+          "messageText": "hey i wanted to know about the various api plans available by tokenmetrics CONFIDENTIALITY STATEMENT: Privileged/Confidential Information may be contained in this message. If you are not the addressee",
+          "messageUrl": "https://mail.google.com/mail/u/0/#search/rfc822msgid:19829072bf8d5e57"
+        }
+      }
+    ],
+    "Pipedrive to create contact": [
+      {
+        "json": {
+          "id": 136,
+          "owner_id": {
+            "id": 23784883,
+            "name": "Token Metrics",
+            "email": "marketing@tokenmetrics.com",
+            "has_pic": 0,
+            "pic_hash": null,
+            "active_flag": true,
+            "value": 23784883
+          },
+          "org_id": null,
+          "name": "Manjunath S",
+          "first_name": "Manjunath",
+          "last_name": "S",
+          "open_deals_count": 0,
+          "related_open_deals_count": 0,
+          "closed_deals_count": 0,
+          "related_closed_deals_count": 0,
+          "participant_open_deals_count": 0,
+          "participant_closed_deals_count": 0,
+          "email_messages_count": 0,
+          "activities_count": 0,
+          "done_activities_count": 0,
+          "undone_activities_count": 0,
+          "files_count": 0,
+          "notes_count": 0,
+          "followers_count": 0,
+          "won_deals_count": 0,
+          "related_won_deals_count": 0,
+          "lost_deals_count": 0,
+          "related_lost_deals_count": 0,
+          "active_flag": true,
+          "phone": [
+            {
+              "value": "",
+              "primary": true
+            }
+          ],
+          "email": [
+            {
+              "label": "work",
+              "value": "manjunath@tokenmetrics.com",
+              "primary": true
+            }
+          ],
+          "first_char": "m",
+          "update_time": "2025-07-20 18:15:19",
+          "delete_time": null,
+          "add_time": "2025-07-20 18:15:19",
+          "visible_to": "3",
+          "picture_id": null,
+          "next_activity_date": null,
+          "next_activity_time": null,
+          "next_activity_id": null,
+          "last_activity_id": null,
+          "last_activity_date": null,
+          "last_incoming_mail_time": null,
+          "last_outgoing_mail_time": null,
+          "label": null,
+          "label_ids": [],
+          "im": [
+            {
+              "value": "",
+              "primary": true
+            }
+          ],
+          "postal_address": null,
+          "postal_address_lat": null,
+          "postal_address_long": null,
+          "postal_address_subpremise": null,
+          "postal_address_street_number": null,
+          "postal_address_route": null,
+          "postal_address_sublocality": null,
+          "postal_address_locality": null,
+          "postal_address_admin_area_level_1": null,
+          "postal_address_admin_area_level_2": null,
+          "postal_address_country": null,
+          "postal_address_postal_code": null,
+          "postal_address_formatted_address": null,
+          "notes": null,
+          "birthday": null,
+          "job_title": null,
+          "org_name": null,
+          "cc_email": "tokenmetrics@pipedrivemail.com",
+          "primary_email": "manjunath@tokenmetrics.com",
+          "owner_name": "Token Metrics",
+          "company_id": 14150264
+        }
+      }
+    ],
+    "Pipedrive to create a deal": [
+      {
+        "json": {
+          "id": 35,
+          "creator_user_id": {
+            "id": 23784883,
+            "name": "Token Metrics",
+            "email": "marketing@tokenmetrics.com",
+            "has_pic": 0,
+            "pic_hash": null,
+            "active_flag": true,
+            "value": 23784883
+          },
+          "user_id": {
+            "id": 23784883,
+            "name": "Token Metrics",
+            "email": "marketing@tokenmetrics.com",
+            "has_pic": 0,
+            "pic_hash": null,
+            "active_flag": true,
+            "value": 23784883
+          },
+          "person_id": {
+            "active_flag": true,
+            "name": "Manjunath S",
+            "email": [
+              {
+                "label": "work",
+                "value": "manjunath@tokenmetrics.com",
+                "primary": true
+              }
+            ],
+            "phone": [
+              {
+                "value": "",
+                "primary": true
+              }
+            ],
+            "owner_id": 23784883,
+            "company_id": 14150264,
+            "value": 136
+          },
+          "org_id": null,
+          "stage_id": 18,
+          "title": "Manjunath S",
+          "value": 0,
+          "currency": "USD",
+          "add_time": "2025-07-20 18:17:15",
+          "update_time": "2025-07-20 18:17:15",
+          "stage_change_time": null,
+          "active": true,
+          "deleted": false,
+          "status": "open",
+          "probability": null,
+          "next_activity_date": null,
+          "next_activity_time": null,
+          "next_activity_id": null,
+          "last_activity_id": null,
+          "last_activity_date": null,
+          "lost_reason": null,
+          "visible_to": "3",
+          "close_time": null,
+          "pipeline_id": 4,
+          "won_time": null,
+          "first_won_time": null,
+          "lost_time": null,
+          "products_count": 0,
+          "files_count": 0,
+          "notes_count": 0,
+          "followers_count": 0,
+          "email_messages_count": 0,
+          "activities_count": 0,
+          "done_activities_count": 0,
+          "undone_activities_count": 0,
+          "participants_count": 0,
+          "expected_close_date": null,
+          "last_incoming_mail_time": null,
+          "last_outgoing_mail_time": null,
+          "label": null,
+          "local_won_date": null,
+          "local_lost_date": null,
+          "local_close_date": null,
+          "origin": "API",
+          "origin_id": null,
+          "channel": null,
+          "channel_id": null,
+          "is_archived": false,
+          "archive_time": null,
+          "sequence_enrollment": null,
+          "stage_order_nr": 1,
+          "person_name": "Manjunath S",
+          "org_name": null,
+          "next_activity_subject": null,
+          "next_activity_type": null,
+          "next_activity_duration": null,
+          "next_activity_note": null,
+          "formatted_value": "$0",
+          "weighted_value": 0,
+          "formatted_weighted_value": "$0",
+          "weighted_value_currency": "USD",
+          "rotten_time": null,
+          "owner_name": "Token Metrics",
+          "cc_email": "tokenmetrics+deal35@pipedrivemail.com",
+          "org_hidden": false,
+          "person_hidden": false
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validator of Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive to create contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive to create contact": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive to create a deal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive to create a deal": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Gmail calssifier adds label to leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Validator of Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validator of Email": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail calssifier adds label to leads": {
+      "main": [
+        [
+          {
+            "node": "Gmail message input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail message input": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c694a9d9-1f0c-4ba3-8413-b0c0ab7601c8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5df4ac7e30b168ff3239b32b89760f96352ed185ed5269006650672064c591b9"
+  },
+  "id": "kyTyC1BDUJWFcROr",
+  "tags": [
+    {
+      "createdAt": "2025-07-14T16:40:06.999Z",
+      "updatedAt": "2025-07-14T16:40:06.999Z",
+      "id": "pEtIUZbGRNMntJ4A",
+      "name": "MANJUNATH"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "name": "YT \u2192 Transcript \u2192 Highlights",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://your-api.com/yt-download",
+        "method": "POST",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "{ \"url\": \"{{Your_YouTube_Link}}\" }"
+      },
+      "id": "1",
+      "name": "Download YouTube Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.assemblyai.com/v2/transcript",
+        "method": "POST",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "authentication": "headerAuth",
+        "headerParametersJson": "{ \"authorization\": \"{{AssemblyAI_API_Key}}\" }",
+        "bodyParametersJson": "{ \"audio_url\": \"={{$json[\\\"audio_url\\\"]}}\", \"iab_categories\": true, \"auto_highlights\": true }"
+      },
+      "id": "2",
+      "name": "Send to AssemblyAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return $json.auto_highlights.results.map(h => ({ json: { text: h.text, timestamps: h.timestamps } }));"
+      },
+      "id": "3",
+      "name": "Extract Highlights",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Download YouTube Audio": {
+      "main": [
+        [
+          {
+            "node": "Send to AssemblyAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to AssemblyAI": {
+      "main": [
+        [
+          {
+            "node": "Extract Highlights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "tags": []
+}

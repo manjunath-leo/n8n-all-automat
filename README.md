@@ -1,112 +1,32 @@
 n8n Automation Collection
 This repository contains a suite of n8n workflows designed to automate content creation, CRM management, and social media publishing. These tools leverage AI and various third-party APIs to streamline business operations and marketing efforts.
-
-Table of Contents
-Automated Faceless AI Videos
-
-Brand Voice Blog Automation
-
-Lead Qualification CRM Automation
-
-News-to-Blog WordPress Automation
-
-Automated News Video Production
-
-YouTube Transcript & Highlights
-
 1. Automated Faceless AI Videos
-File: 2025_04_26_automated_faceless_ai_videos_n8n.json
+What problem does it solve: Manually brainstorming, scripting, editing, and posting short-form social media content is extremely time-consuming and labor-intensive.
 
-This workflow automatically brainstorms viral video ideas, generates scripts and captions using AI, and creates faceless videos for social media platforms.
+Brief intro: This workflow automatically generates viral video topics, writes scripts and captions using AI, produces the video through video-generation tools, and distributes the final media across multiple social media platforms, including Instagram, Facebook, and LinkedIn.
 
-How to Use:
+2. AI Brand Voice Blog Generation
+What problem does it solve: Maintaining a consistent brand voice across dozens of articles while ensuring proper SEO (like internal linking) is complex and manually difficult to manage.
 
-Configure AI Agent: Set your desired theme in the "AI Agent" node.
+Brief intro: This system analyzes your existing website content to learn your specific brand voice and writing style. It then generates new, high-quality blog posts in that same style, automatically inserts relevant internal links found via your site's sitemap, and syncs the output to your content management dashboard.
 
-API Configuration: Provide your video generation service API key in the "Prepare Video" and "Prepare for Publish" nodes.
+3. CRM Lead Qualification
+What problem does it solve: Manually sorting through a busy inbox to distinguish genuine sales inquiries from general noise is inefficient and risks missing potential customers.
 
-Social Connectivity: Input your account IDs for Instagram, Facebook, LinkedIn, and Threads in the publication nodes.
+Brief intro: This automation monitors your inbox and uses AI to analyze the intent of every incoming email. It automatically labels genuine sales leads, filters out noise, and creates corresponding records (contacts and deals) in your CRM, significantly streamlining your sales pipeline.
 
-Trigger: The workflow is configured to run daily via a Schedule Trigger.
+4. News-to-Blog Automation
+What problem does it solve: Manually researching industry news, writing unique blog posts, and sourcing or creating featured images for a blog is a slow and repetitive daily task.
 
-2. Brand Voice Blog Automation
-File: Blog_automation_Oendies (2).json
-
-A workflow that analyzes existing content to extract a unique "brand voice" and uses it to generate new articles that maintain a consistent style.
-
-How to Use:
-
-Data Source: Connect your spreadsheet containing existing article URLs to the "Get all content" node.
-
-Style Extraction: The workflow crawls your URLs to identify language patterns, structure, and writing styles.
-
-Article Generation: Send a new topic via Webhook to trigger the "Content Generation Agent".
-
-SEO Automation: An AI agent uses sitemap tools to find and insert relevant internal links automatically.
-
-3. Lead Qualification CRM Automation
-File: CRM_AUTOMTION (1).json
-
-Automates the process of identifying potential leads from incoming emails and adding them to a CRM.
-
-How to Use:
-
-Inbox Integration: Connect your business email to the "Gmail Trigger" node.
-
-AI Validation: An LLM analyzes email snippets to distinguish genuine sales interest from general inquiries.
-
-CRM Sync: Qualified leads are automatically synced to your CRM as new contacts and deals.
-
-Inbox Organization: The workflow automatically applies a "leads" label to qualified emails in your inbox.
-
-4. News-to-Blog WordPress Automation
-File: Wordpress_blog.json
-
-Automatically monitors technology news and transforms the latest updates into illustrated WordPress blog posts.
-
-How to Use:
-
-News Fetching: Configure the HTTP Request node with your news provider API key.
-
-WordPress Connection: Link your site using the WordPress API credentials.
-
-Content Creation: AI creates a unique title and a structured 5-paragraph HTML article.
-
-Automated Imagery: The workflow generates a professional illustration based on the article content and sets it as the featured image.
+Brief intro: This workflow fetches the latest industry news via API, uses AI to write an original, multi-paragraph article, generates a professional custom illustration based on that content, and publishes the final post directly to your website.
 
 5. Automated News Video Production
-File: news_video_automation_workflow (2).json
+What problem does it solve: Converting text-based posts into engaging video content requires multiple steps—scriptwriting, voiceover recording, visual editing, and animation—which are difficult to scale.
 
-Converts written publication posts into news-style video content featuring AI voiceovers and custom animations.
-
-How to Use:
-
-Source Connection: Fetches content from your digital publication API.
-
-A/V Workflow: Uses AI to write a 90-second script, generate a voiceover, and create matching illustrations.
-
-Animation & Assembly: Static images are animated and merged with the audio track automatically.
-
-Direct Upload: The finished video is uploaded directly to your video hosting channel with optimized tags.
+Brief intro: This automation extracts content from your latest posts, converts it into a script using AI, generates audio narration, creates and animates visual illustrations, and merges everything into a polished video ready for automatic upload to your video hosting channel.
 
 6. YouTube Transcript & Highlights
-File: youtube_transcript_highlights_workflow.json
+What problem does it solve: Manually watching long-form videos to extract key insights and find timestamped highlights for repurposing content is tedious and slow.
 
-Extracts key highlights and timestamps from YouTube videos to assist with content repurposing.
-
-How to Use:
-
-Audio Processing: Provide a YouTube URL; the workflow downloads the audio for analysis.
-
-Speech-to-Text: The audio is sent to a transcription service to generate a text record.
-
-Highlight Extraction: AI identifies significant segments and provides their exact timestamps.
-
-General Requirements
-n8n Environment: A running n8n instance (self-hosted or cloud).
-
-API Management: You must provide your own API keys for AI services, social platforms, and CRMs.
-
-Credential Setup: Ensure all nodes requiring authentication are properly configured in your n8n credentials manager.
-
+Brief intro: This workflow takes a YouTube URL, retrieves the audio, utilizes AI to transcribe the video, and automatically identifies and extracts significant highlights with accurate timestamps to simplify your content repurposing process.
 contact -manjunath21203@gmail.com if u have any queries 
